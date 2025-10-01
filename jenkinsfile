@@ -1,42 +1,41 @@
 pipeline {
-    agent any
-    environment {
-        IMAGE_NAME = 'sufibaba6629/sufiprofile-reactapp'
-        IMAGE_TAG = "${IMAGE_NAME}:${env.BUILD_NUMBER}"
+  agent any
 
-    }
-    stages {
+  environment {
+    IMAGE_NAME = 'sufibaba6629/sufiprofile-reactapp'
+    IMAGE_TAG  = "${IMAGE_NAME}:${BUILD_NUMBER}"
+  }
 
-        stage('Checkout') {
-            steps {
-                git url: 'https://github.com/sufyanahmadkamboh/sample-react-app.git', branch: 'main'
-                sh "ls -ltr"
-            }
-        }
-        stage('Login to docker hub') {
-            steps {
-                withCredentials([string(credentialsId: 'dockerhubpwd', variable: 'dockerhubpwd')]) {
-                sh 'echo ${dockerhubpwd} | docker login -u sufibaba6629 --password-stdin'}
-                echo 'Login successfully'
-            }
-        }
-        stage('Build Docker Image')
-        {
-            steps
-            {
-                sh 'docker build -t ${IMAGE_TAG} .'
-                echo "Docker image build successfully"
-                sh "docker images"
-            }
-        }
-        stage('Push Docker Image')
-        {
-            steps
-            {
-                sh 'docker push ${IMAGE_TAG}'
-                echo "Docker image push successfully"
-            }
-        }
-        }
+  stages {
+    stage('Checkout') {
+      steps {
+        git branch: 'main', url: 'https://github.com/sufyanahmadkamboh/sample-react-app.git'
+        sh 'ls -ltr'
+      }
     }
+
+    stage('Login to Docker Hub') {
+      steps {
+        withCredentials([string(credentialsId: 'dockerhubpwd', variable: 'DOCKERHUB_PWD')]) {
+          sh """echo "${DOCKERHUB_PWD}" | docker login -u sufibaba6629 --password-stdin"""
+        }
+        echo 'Login successfully'
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        sh """docker build -t "${IMAGE_TAG}" ."""
+        echo 'Docker image built successfully'
+        sh 'docker images'
+      }
+    }
+
+    stage('Push Docker Image') {
+      steps {
+        sh """docker push "${IMAGE_TAG}""""
+        echo 'Docker image pushed successfully'
+      }
+    }
+  }
 }
