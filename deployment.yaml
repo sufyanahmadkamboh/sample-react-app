@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-profile-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-profile
+  template:
+    metadata:
+      labels:
+        app: nginx-profile
+    spec:
+      containers:
+      - name: nginx-profile
+        image: sufibaba6629/sufiprofile:v1
+        ports:
+        - containerPort: 80
+

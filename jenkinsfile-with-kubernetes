@@ -1,0 +1,100 @@
+pipeline {
+  agent any
+
+  environment {
+    IMAGE_REPO = 'sufibaba6629/sufiprofile-reactapp'
+    IMAGE_TAG  = "${IMAGE_REPO}:${BUILD_NUMBER}"
+    LATEST_TAG = "${IMAGE_REPO}:latest"
+    K8S_DEPLOYMENT = "nginx-profile-deployment"
+    K8S_CONTAINER  = "nginx-profile"
+    // Use microk8s' kubectl; adjust if you've symlinked kubectl
+    KUBECTL = "/snap/bin/microk8s.kubectl"
+  }
+
+  options {
+    timestamps()
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        git url: 'https://github.com/sufyanahmadkamboh/sample-react-app.git', branch: 'main'
+        sh 'ls -ltr'
+      }
+    }
+
+    stage('Docker Login') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+          sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin'
+        }
+      }
+    }
+
+    stage('Build Image') {
+      steps {
+        sh 'docker build -t "$IMAGE_TAG" .'
+        sh 'docker tag "$IMAGE_TAG" "$LATEST_TAG"'
+      }
+    }
+
+    stage('Push Image') {
+      steps {
+        sh 'docker push "$IMAGE_TAG"'
+        sh 'docker push "$LATEST_TAG"'
+      }
+    }
+
+    stage('K8s: Create/Update Workloads') {
+      steps {
+        // Apply manifests once (idempotent); safe if they already exist
+        sh '''
+          set -e
+          # If you keep manifests in repo under k8s/, adjust path below:
+          if [ -f deployment.yaml ]; then
+            $KUBECTL apply -f deployment.yaml
+          fi
+          if [ -f service.yaml ]; then
+            $KUBECTL apply -f service.yaml
+          fi
+        '''
+      }
+    }
+
+    stage('K8s: Set Image & Rollout') {
+      steps {
+        sh '''
+          set -e
+          # Point the running Deployment at the fresh image tag
+          $KUBECTL set image deployment/"$K8S_DEPLOYMENT" \
+            "$K8S_CONTAINER"="$IMAGE_TAG"
+
+          # Wait until the rollout finishes (or fails)
+          $KUBECTL rollout status deployment/"$K8S_DEPLOYMENT" --timeout=120s
+
+          echo "✅ Deployed $IMAGE_TAG to Kubernetes"
+        '''
+      }
+    }
+  }
+
+  post {
+    always {
+      sh 'docker image prune -f || true'
+    }
+    success {
+      echo "🎉 Build ${BUILD_NUMBER} shipped to MicroK8s"
+    }
+    failure {
+      script {
+        sh '''
+          echo "❌ Rollout failed. Showing last K8s events & pods:"
+          set +e
+          ''' +
+          '$KUBECTL get pods -o wide; ' +
+          '$KUBECTL describe deployment "$K8S_DEPLOYMENT" || true; ' +
+          '$KUBECTL get events --sort-by=.lastTimestamp | tail -n 50 || true'
+      }
+    }
+  }
+}
