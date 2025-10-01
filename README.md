@@ -1,181 +1,70 @@
-## 🚀 Jenkins + Docker + Kubernetes on EC2 Setup Guide
+# Getting Started with Create React App
 
-This guide explains how to set up Jenkins, Docker, and Kubernetes (MicroK8s) on an AWS EC2 instance to build and deploy applications.
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-1️⃣ Launch EC2 Instance
+## Available Scripts
 
-Instance type: t2.medium
+In the project directory, you can run:
 
-Storage: 50GB volume
+### `npm start`
 
-Security Group: Allow all ports and all protocols (for testing/demo purposes – not recommended for production).
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-2️⃣ Connect to Server & Install Docker + Kubernetes
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
 
-* Become root
-sudo -i
+### `npm test`
 
-* Update system
-apt update && apt install docker.io -y
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
-* Install snap and MicroK8s (Kubernetes)
+### `npm run build`
 
-apt install snap -y && snap install microk8s --classic
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
 
-Configure kubectl alias
-alias kubectl='microk8s kubectl'
-source <(microk8s kubectl completion bash)
-complete -F __start_kubectl kubectl
-source ~/.bashrc
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
 
-3️⃣ Install JDK 21 for Jenkins
-sudo apt update
-sudo apt install fontconfig openjdk-21-jre -y
-java -version
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-4️⃣ Install Jenkins
+### `npm run eject`
 
-* Add Jenkins key & repo
-sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
-  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
 
-echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] \
-  https://pkg.jenkins.io/debian-stable binary/" | sudo tee \
-  /etc/apt/sources.list.d/jenkins.list > /dev/null
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-* Install Jenkins
-sudo apt update
-sudo apt install jenkins -y
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
-5️⃣ Configure Jenkins Permissions
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
 
-sudo usermod -aG docker jenkins
-sudo usermod -aG microk8s jenkins
-sudo systemctl restart jenkins
+## Learn More
 
-6️⃣ Access Jenkins
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-Open: http://<EC2-IP>:8080
+To learn React, check out the [React documentation](https://reactjs.org/).
 
-Retrieve initial password:
+### Code Splitting
 
-cat /var/lib/jenkins/secrets/initialAdminPassword
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
 
+### Analyzing the Bundle Size
 
-Login and install suggested plugins.
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
 
-7️⃣ Setup Jenkins Credentials
+### Making a Progressive Web App
 
-Go to Manage Jenkins → Credentials
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
 
-Add two credentials:
+### Advanced Configuration
 
-GitHub → ID: git-creds
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 
-DockerHub → ID: dockerhub-credentials
+### Deployment
 
-8️⃣ Create First Pipeline (Hello World)
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 
-pipeline {
-    agent any
+### `npm run build` fails to minify
 
-    stages {
-        stage('Hello') {
-            steps {
-                echo 'Hello World'
-            }
-        }
-    }
-}
-
-9️⃣ Docker Build + Deploy Pipeline
-
-Create a new pipeline named reactprofile-with-docker.
-Update IMAGE_NAME with your DockerHub repository.
-
-pipeline {
-    agent any
-
-    environment {
-        IMAGE_NAME = 'sufibaba6629/sufiprofile-reactapp'
-        IMAGE_TAG  = "${IMAGE_NAME}:${BUILD_NUMBER}"
-        Container  = "sufi-profile"
-    }
-
-    stages {
-        stage('Checkout') {
-            steps {
-                git url: 'https://github.com/sufyanahmadkamboh/sample-react-app.git', branch: 'main'
-                sh 'ls -ltr'
-            }
-        }
-
-        stage('Login to Docker Hub') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh "echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USERNAME} --password-stdin"
-                    }
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                sh "docker build -t ${IMAGE_TAG} ."
-                sh "docker tag ${IMAGE_TAG} ${IMAGE_NAME}:latest"
-                sh "docker images"
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
-                sh "docker push ${IMAGE_TAG}"
-                sh "docker push ${IMAGE_NAME}:latest"
-            }
-        }
-
-        stage('Run Docker Container') {
-            steps {
-                sh "docker rm -f ${Container} || true"
-                sh "docker run -d --name ${Container} -p 3000:80 ${IMAGE_TAG}"
-                sh "docker image prune -f"
-            }
-        }
-    }
-}
-
-
-✅ Access app at: http://<EC2-IP>:3000
-
-🔟 Kubernetes Deployment Pipeline
-
-Create a pipeline named reactprofile-on-Kubernetes.
-Use Pipeline from SCM → GitHub Repo → Jenkinsfile-with-Kubernetes.
-
-This will automatically deploy the app to Kubernetes.
-Access at: http://<EC2-IP>:30080
-
-1️⃣1️⃣ Configure GitHub Webhook (Auto Trigger)
-
-Install plugins:
-
-GitHub Integration Plugin
-
-GitHub Plugin
-
-Add GitHub credentials in Jenkins.
-
-Add webhook in GitHub repository:
-
-http://<YOUR_JENKINS_URL>/github-webhook/
-
-🎯 Summary
-
-Pipeline 1 → Hello World
-
-Pipeline 2 → Build & Deploy React App with Docker
-
-Pipeline 3 → Deploy React App on Kubernetes
-
-Now you have a full CI/CD pipeline running with Jenkins → Docker → Kubernetes! 🚀
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
