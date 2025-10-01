@@ -1,4 +1,4 @@
-🚀 Jenkins + Docker + Kubernetes on EC2 Setup Guide
+## 🚀 Jenkins + Docker + Kubernetes on EC2 Setup Guide
 
 This guide explains how to set up Jenkins, Docker, and Kubernetes (MicroK8s) on an AWS EC2 instance to build and deploy applications.
 
@@ -11,13 +11,15 @@ Storage: 50GB volume
 Security Group: Allow all ports and all protocols (for testing/demo purposes – not recommended for production).
 
 2️⃣ Connect to Server & Install Docker + Kubernetes
-# Become root
+
+* Become root
 sudo -i
 
-# Update system
+* Update system
 apt update && apt install docker.io -y
 
-# Install snap and MicroK8s (Kubernetes)
+* Install snap and MicroK8s (Kubernetes)
+
 apt install snap -y && snap install microk8s --classic
 
 Configure kubectl alias
@@ -32,7 +34,8 @@ sudo apt install fontconfig openjdk-21-jre -y
 java -version
 
 4️⃣ Install Jenkins
-# Add Jenkins key & repo
+
+* Add Jenkins key & repo
 sudo wget -O /etc/apt/keyrings/jenkins-keyring.asc \
   https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
 
@@ -40,11 +43,12 @@ echo "deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] \
   https://pkg.jenkins.io/debian-stable binary/" | sudo tee \
   /etc/apt/sources.list.d/jenkins.list > /dev/null
 
-# Install Jenkins
+* Install Jenkins
 sudo apt update
 sudo apt install jenkins -y
 
 5️⃣ Configure Jenkins Permissions
+
 sudo usermod -aG docker jenkins
 sudo usermod -aG microk8s jenkins
 sudo systemctl restart jenkins
@@ -71,6 +75,7 @@ GitHub → ID: git-creds
 DockerHub → ID: dockerhub-credentials
 
 8️⃣ Create First Pipeline (Hello World)
+
 pipeline {
     agent any
 
