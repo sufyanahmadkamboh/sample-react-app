@@ -9,7 +9,7 @@ function App() {
       <div>
 
         <h1 class="name">Sufyan Ahmad kamboh</h1>
-        <p class="role">DevOps and voip Engineer</p>
+        <p class="role">DevSecOps and voip Engineer</p>
       </div>
       </header>
     </div>
