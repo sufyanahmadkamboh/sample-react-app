@@ -1,8 +1,18 @@
-name: first
-'on': push
-jobs: 
-    hello-job:
-        runs-on: ubuntu-latest
-        steps:
-            - name: echo test
-              run: echo "hello word"
+name: CI
+
+on:
+  push:  
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.11
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
