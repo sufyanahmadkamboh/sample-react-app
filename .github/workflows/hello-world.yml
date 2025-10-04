@@ -1,1 +1,8 @@
-
+name: first
+'on': push
+jobs: 
+    hello-job:
+        runs-on: ubuntu-latest
+        steps:
+            - name: echo test
+              run: echo "hello word"
